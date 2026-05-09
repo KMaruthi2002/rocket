@@ -1,9 +1,8 @@
 ---
-title: ROCKET ⚡ AI Scientist for AMD Performance
-sdk: static
-pinned: true
-license: apache-2.0
-short_description: An AI scientist whose only research domain is making models faster on AMD MI300X.
+Title: ROCKET ⚡ AI Scientist for AMD Performance
+SDK: static
+License: apache-2.0
+Short Description: An AI scientist whose only research domain is making models faster on AMD MI300X.
 ---
 
 # ⚡ ROCKET

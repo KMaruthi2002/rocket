@@ -1,8 +1,5 @@
 ---
 title: ROCKET ⚡ AI Scientist for AMD Performance
-emoji: ⚡
-colorFrom: red
-colorTo: gray
 sdk: static
 pinned: true
 license: apache-2.0
@@ -13,17 +10,17 @@ short_description: An AI scientist whose only research domain is making models f
 
 > An AI scientist whose only research domain is making models faster on AMD MI300X.
 
-ROCKET is a multi-agent system that takes a PyTorch model, profiles it on AMD MI300X, hypothesizes which optimizations will help, applies them, validates correctness, and measures the speedup — completely on its own. Output: a measured speedup, a research log, and a PR-ready diff.
+ROCKET is a multi-agent system that takes a PyTorch model, profiles it on AMD MI300X, hypothesizes which optimizations will help, applies them, validates correctness, and measures the speedup completely on its own. Output: a measured speedup, a research log, and a PR-ready diff.
 
 **Real result on real hardware.** Qwen2.5-7B-Instruct on AMD Instinct MI300X (ROCm 7), batch=8, prompt 256 + new 512: baseline 62.59 tok/s → final 183.47 tok/s. **2.93× honest speedup.** The agent tried 5 tools and kept 1 (bf16 cast); rejected the 4 that didn't beat the validation threshold.
 
-**Built solo in 24 hours for the AMD x lablab.ai Developer Hackathon (May 2026).**
+**Built for the AMD x lablab.ai Developer Hackathon (May 2026).**
 
 ---
 
 ## What makes ROCKET different
 
-The hackathon is full of great agentic systems — for medical triage, code translation, GPU debugging. ROCKET targets a different problem: **"how do I make this model faster on AMD?"** is the first question every developer asks, and ROCKET answers it autonomously.
+The hackathon is full of great agentic systems for medical triage, code translation, GPU debugging. ROCKET targets a different problem: **"how do I make this model faster on AMD?"** is the first question every developer asks, and ROCKET answers it autonomously.
 
 - **ROCmPort AI** translates CUDA code → ROCm code.
 - **ReplayLab** records GPU experiments and recovers from failures.
@@ -58,7 +55,7 @@ ROCKET doesn't write arbitrary code. The agent picks from a curated set of high-
 
 | Tool | What it does |
 |---|---|
-| `dtype_cast` | Cast model to bf16/fp16 — halves memory, ~2× throughput on MI300X |
+| `dtype_cast` | Cast model to bf16/fp16 : halves memory, ~2× throughput on MI300X |
 | `torch_compile` | Inductor-fused kernels via `torch.compile` |
 | `sdpa_attention` | Switch to PyTorch's fused scaled-dot-product attention |
 | `input_padding` | Pad shapes to GPU-friendly multiples (128/256) |
@@ -100,4 +97,4 @@ If you'd like to like this Space ❤️, that helps with the HF community prize 
 
 ## Built by
 
-A solo team, hacking through the night for the AMD Developer Hackathon. Repo and team page on lablab.ai.
+Maruthi Kunchala, hacking through the night for the AMD Developer Hackathon. Repo and team page on lablab.ai.

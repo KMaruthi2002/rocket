@@ -1,0 +1,23 @@
+# core
+torch>=2.6.0
+transformers>=4.46.0
+accelerate>=1.0.0
+numpy
+pandas
+
+# agent / planning
+anthropic>=0.40.0
+openai>=1.50.0
+pydantic>=2.0
+
+# profiling
+psutil
+
+# dashboard / demo
+streamlit>=1.39.0
+plotly>=5.20.0
+rich
+
+# dev / utils
+python-dotenv
+typer

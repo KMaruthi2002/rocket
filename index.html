@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ROCKET ⚡ Autonomous Performance Researcher for AMD MI300X</title>
+  <meta name="description" content="An autonomous Qwen agent that makes any model faster on AMD MI300X. Profile, hypothesize, optimize, validate. By itself." />
+  <meta property="og:title" content="ROCKET ⚡ Autonomous Perf Researcher for AMD MI300X" />
+  <meta property="og:description" content="Built solo for the AMD x lablab.ai Developer Hackathon. 5.67× measured speedup on MI300X." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#0a0a14" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- intro overlay disabled: was causing pages to get stuck if JS failed.
+       can be re-enabled once we have a confirmed-working JS load.
+  -->
+
+  <!-- failsafe: runs before module JS. guarantees no overlay can ever block,
+       and every .reveal element ends up visible no matter what app.js does. -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // remove any stuck intro overlay
+      const i = document.getElementById("intro");
+      if (i) {
+        setTimeout(() => i.classList.add("gone"), 1500);
+        setTimeout(() => i.remove(), 2500);
+      }
+      // FORCE every .reveal element to be visible after 600ms.
+      // The IntersectionObserver in app.js can still trigger animations
+      // earlier; this is purely a safety net.
+      setTimeout(() => {
+        document.querySelectorAll(".reveal").forEach(el => el.classList.add("in"));
+      }, 600);
+    });
+  </script>
+
+  <!-- WebGL cosmic background (Three.js) -->
+  <canvas id="cosmos" aria-hidden="true"></canvas>
+  <!-- 2D canvas for additional ambient particles on top of the cosmos -->
+  <canvas id="bgCanvas" aria-hidden="true"></canvas>
+  <!-- custom targeting reticle cursor -->
+  <div id="reticle" aria-hidden="true">
+    <span class="ret-ring"></span>
+    <span class="ret-dot"></span>
+    <span class="ret-cross ret-cross-h"></span>
+    <span class="ret-cross ret-cross-v"></span>
+  </div>
+  <!-- cursor-following glow (premium polish) -->
+  <div id="cursorGlow" aria-hidden="true"></div>
+
+  <!-- page indicator (paged-app mode) -->
+  <div class="page-indicator" id="pageIndicator">
+    <span class="pi-num" id="piCurrent">01</span>
+    <span class="pi-sep">/</span>
+    <span class="pi-total" id="piTotal">11</span>
+    <div class="pi-bar"><div class="pi-fill" id="piFill"></div></div>
+  </div>
+
+  <!-- keyboard hint, fades after 5s -->
+  <div class="kbd-hint">
+    <span class="kbd-key">↓</span> next
+    <span style="margin: 0 6px; opacity: 0.4;">·</span>
+    <span class="kbd-key">↑</span> back
+    <span style="margin: 0 6px; opacity: 0.4;">·</span>
+    scroll, click, or use arrow keys
+  </div>
+
+  <!-- floating left-side scroll progress rail + nav dock -->
+  <aside id="sideRail" class="side-rail" aria-label="section navigation">
+    <div class="rail-track">
+      <div class="rail-progress" id="railProgress"></div>
+    </div>
+    <ul class="rail-nav" id="railNav">
+      <!-- populated by JS -->
+    </ul>
+  </aside>
+
+  <!-- top bar -->
+  <nav class="topbar">
+    <div class="topbar-brand">
+      <span class="brand-mark">⚡</span>
+      <span class="brand-name">ROCKET</span>
+    </div>
+    <div class="topbar-meta">
+      <span class="dot dot-live"></span>
+      <span class="topbar-status">SOLO BUILD · AMD x LABLAB · 24H</span>
+    </div>
+  </nav>
+
+  <!-- ============================================================ -->
+  <!-- HERO -->
+  <!-- ============================================================ -->
+  <section class="hero" id="hero" data-rail-label="Hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow reveal">// AN&nbsp;AI&nbsp;RESEARCHER&nbsp;·&nbsp;AMD&nbsp;MI300X&nbsp;·&nbsp;ROCm&nbsp;7</div>
+
+      <h1 class="hero-title reveal">
+        <span class="word">RO</span><span class="word accent">CKET</span><span class="bolt">⚡</span>
+      </h1>
+
+      <p class="hero-sub reveal">
+        An <em>AI scientist</em> whose only research domain is making models
+        <em>faster on AMD MI300X</em>. It hypothesizes. It runs experiments.
+        It reads its own results. It writes the next experiment.<br/>
+        <span style="color:#9a9aa8; font-size: 0.85em;">Qwen all the way down. Solo build, 24 hours.</span>
+      </p>
+
+      <div class="hero-pills reveal">
+        <span class="pill">QWEN PLANNER</span>
+        <span class="pill">QWEN TARGET</span>
+        <span class="pill">ROCm 7.0 · MI300X</span>
+        <span class="pill pill-strong">5.67× MEASURED</span>
+      </div>
+
+      <a href="#journey" class="hero-cta reveal">
+        Watch it work
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 16l-6-6h12z"/></svg>
+      </a>
+    </div>
+
+    <!-- animated GPU die SVG floating in the background of hero -->
+    <div class="hero-die" aria-hidden="true">
+      <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="dieGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ED1C24" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#ED1C24" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle cx="200" cy="200" r="180" fill="url(#dieGlow)"/>
+        <rect x="80" y="80" width="240" height="240" rx="14" fill="#15151f" stroke="#ED1C24" stroke-width="1.5" opacity="0.85"/>
+        <rect x="120" y="120" width="160" height="160" rx="6" fill="#0a0a14" stroke="#ED1C24" stroke-width="1" opacity="0.7"/>
+        <g stroke="#ED1C24" stroke-width="0.5" opacity="0.45">
+          <line x1="160" y1="120" x2="160" y2="280"/>
+          <line x1="200" y1="120" x2="200" y2="280"/>
+          <line x1="240" y1="120" x2="240" y2="280"/>
+          <line x1="120" y1="160" x2="280" y2="160"/>
+          <line x1="120" y1="200" x2="280" y2="200"/>
+          <line x1="120" y1="240" x2="280" y2="240"/>
+        </g>
+        <text x="200" y="208" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="#ED1C24" font-weight="700" letter-spacing="3">MI300X</text>
+        <!-- pin traces -->
+        <g stroke="#ED1C24" stroke-width="1" opacity="0.55">
+          <line x1="80" y1="120" x2="50" y2="120"/>
+          <line x1="80" y1="160" x2="50" y2="160"/>
+          <line x1="80" y1="200" x2="50" y2="200"/>
+          <line x1="80" y1="240" x2="50" y2="240"/>
+          <line x1="80" y1="280" x2="50" y2="280"/>
+          <line x1="320" y1="120" x2="350" y2="120"/>
+          <line x1="320" y1="160" x2="350" y2="160"/>
+          <line x1="320" y1="200" x2="350" y2="200"/>
+          <line x1="320" y1="240" x2="350" y2="240"/>
+          <line x1="320" y1="280" x2="350" y2="280"/>
+        </g>
+        <!-- traveling token particles -->
+        <circle cx="50" cy="160" r="3" fill="#ED1C24">
+          <animate attributeName="cx" values="50;200;350" dur="2.8s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0;1;0" dur="2.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="50" cy="240" r="3" fill="#ED1C24">
+          <animate attributeName="cx" values="50;200;350" dur="3.2s" begin="0.5s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0;1;0" dur="3.2s" begin="0.5s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="350" cy="200" r="3" fill="#ED1C24">
+          <animate attributeName="cx" values="350;200;50" dur="2.5s" begin="1s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0;1;0" dur="2.5s" begin="1s" repeatCount="indefinite"/>
+        </circle>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- LIVE TERMINAL — looks like real software running -->
+  <!-- ============================================================ -->
+  <section class="terminal-section reveal" id="terminal" data-rail-label="Live run">
+    <div class="terminal-wrap">
+      <div class="terminal-bar">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+        <span class="terminal-title">rocket@mi300x ~ python -m rocket.orchestrator --model Qwen/Qwen2.5-1.5B-Instruct</span>
+        <span class="terminal-status" id="termStatus">● running</span>
+      </div>
+      <div class="terminal-screen" id="termScreen"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SPEEDUP MEGA STAT -->
+  <!-- ============================================================ -->
+  <section class="speedup-section reveal" id="speedup" data-rail-label="2.93×">
+    <div class="speedup-eyebrow">MEASURED · AMD INSTINCT MI300X</div>
+    <div class="speedup-mega">
+      <span id="speedupCounter" data-target="2.93">1.00</span><span class="speedup-x">×</span>
+    </div>
+    <div class="speedup-caption">
+      <span class="num" id="baselineNum">62.6</span>
+      <span class="arrow">→</span>
+      <span class="num emph" id="finalNum">183.5</span>
+      <span class="unit">tokens/sec on Qwen2.5-7B</span>
+    </div>
+    <div class="speedup-meta">
+      1 of 5 optimizations kept · agent reverted the rest · zero human input after pressing Run
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TOKEN RACE — the visceral moment -->
+  <!-- ============================================================ -->
+  <section class="race-section reveal" id="race" data-rail-label="Race">
+    <div class="section-eyebrow">SIDE BY SIDE</div>
+    <h2 class="section-title">The same prompt. Same model. Same hardware.</h2>
+    <p class="section-sub">
+      Both panels generate the same response on Qwen2.5-7B at batch=8 on AMD MI300X.
+      The left panel uses the fp32 baseline. The right panel runs the bf16 cast
+      ROCKET autonomously kept. Watch them race.
+    </p>
+
+    <div class="race-grid">
+      <div class="race-panel race-baseline">
+        <div class="race-head">
+          <div class="race-tag">BASELINE</div>
+          <div class="race-spec">Qwen2.5-7B · fp32 · batch 8</div>
+          <div class="race-tps" id="raceTpsBase">62.6 tok/s</div>
+        </div>
+        <div class="race-screen">
+          <div class="race-prompt">> tell me about the AMD MI300X in one paragraph</div>
+          <div class="race-output" id="raceOutputBase"></div>
+          <div class="race-cursor" id="raceCursorBase">▌</div>
+        </div>
+        <div class="race-bar">
+          <div class="race-bar-fill" id="raceBarBase"></div>
+        </div>
+      </div>
+
+      <div class="race-panel race-rocket">
+        <div class="race-head">
+          <div class="race-tag glow">ROCKET ⚡</div>
+          <div class="race-spec">Qwen2.5-7B · bf16 · batch 8</div>
+          <div class="race-tps" id="raceTpsOpt">183.5 tok/s</div>
+        </div>
+        <div class="race-screen">
+          <div class="race-prompt">> tell me about the AMD MI300X in one paragraph</div>
+          <div class="race-output" id="raceOutputOpt"></div>
+          <div class="race-cursor" id="raceCursorOpt">▌</div>
+        </div>
+        <div class="race-bar race-bar-bright">
+          <div class="race-bar-fill" id="raceBarOpt"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="race-controls">
+      <button id="raceBtn" class="replay-btn">▶︎ Run the race</button>
+      <span class="race-meta" id="raceMeta">2.93× faster · same output, same model, same MI300X</span>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- INTERACTIVE STACK — toggle each optimization, see speedup live -->
+  <!-- ============================================================ -->
+  <section class="stack-section" id="stack" data-rail-label="Stack">
+    <div class="section-eyebrow">INTERACTIVE</div>
+    <h2 class="section-title">Toggle the agent's discoveries.</h2>
+    <p class="section-sub">
+      Each card is one decision the agent made. Click to add or remove it from
+      the stack and watch the cumulative speedup update in real time.
+      The agent picked this exact order autonomously.
+    </p>
+
+    <div class="stack-wrapper">
+      <div class="stack-meter">
+        <div class="stack-meter-label">CUMULATIVE SPEEDUP</div>
+        <div class="stack-meter-num"><span id="stackNum">1.00</span><span class="x">×</span></div>
+        <div class="stack-meter-bar">
+          <div class="stack-meter-fill" id="stackFill"></div>
+        </div>
+        <div class="stack-meter-tps">
+          <span id="stackBaseline">39.9</span>
+          <span class="arr">→</span>
+          <span id="stackResult" class="emph">39.9</span>
+          <span class="unit">tok/s</span>
+        </div>
+      </div>
+
+      <div class="stack-cards" id="stackCards">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- profile breakdown that mutates as the stack toggles -->
+    <div class="profile-breakdown reveal">
+      <div class="profile-head">
+        <div class="profile-eyebrow">PROFILE BREAKDOWN</div>
+        <div class="profile-title">Where the time actually goes</div>
+        <div class="profile-sub">Toggle optimizations above. Watch the bottlenecks dissolve.</div>
+      </div>
+      <div class="profile-bars" id="profileBars">
+        <!-- populated by JS -->
+      </div>
+      <div class="profile-foot">
+        <div class="profile-stat">
+          <div class="profile-stat-label">TOTAL DEVICE TIME / TOKEN</div>
+          <div class="profile-stat-val"><span id="profileTime">25.1</span> <span class="unit">ms</span></div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-label">MEMORY FOOTPRINT</div>
+          <div class="profile-stat-val"><span id="profileMem">6.30</span> <span class="unit">GB</span></div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-label">BOTTLENECK</div>
+          <div class="profile-stat-val"><span id="profileBottleneck">attention</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- WHY (positioning vs every adjacent project) -->
+  <!-- ============================================================ -->
+  <section class="why" id="why" data-rail-label="Why">
+    <div class="why-eyebrow">// HOW&nbsp;THIS&nbsp;IS&nbsp;DIFFERENT</div>
+    <h2 class="why-h">An AI scientist for a question no one's automated.</h2>
+    <p class="why-sub">
+      Every AMD developer's first question is "how do I make this fast on MI300X?"
+      That question doesn't have an autonomous answer. Until now.
+    </p>
+
+    <div class="why-grid">
+      <div class="why-card tilt reveal">
+        <div class="why-num">01 · vs. Sakana / AutoResearch</div>
+        <h3>Different research domain</h3>
+        <p>Sakana's <strong>AI Scientist</strong> and Karpathy's <strong>AutoResearch</strong> design experiments to improve <em>model accuracy</em>. ROCKET designs experiments to improve <em>throughput on AMD silicon</em>. Different question. Zero prior art.</p>
+      </div>
+      <div class="why-card tilt reveal">
+        <div class="why-num">02 · vs. ROCmPort AI</div>
+        <h3>Different verb</h3>
+        <p><strong>ROCmPort</strong> takes CUDA code and makes it <em>run</em> on ROCm. ROCKET takes a model that already runs and makes it <em>fast</em>. Translation vs. optimization.</p>
+      </div>
+      <div class="why-card tilt reveal">
+        <div class="why-num">03 · vs. ReplayLab</div>
+        <h3>Different posture</h3>
+        <p><strong>ReplayLab</strong> records GPU experiments and recovers from crashes. ROCKET is the <em>autopilot</em>. It doesn't just observe, it <em>acts</em>.</p>
+      </div>
+      <div class="why-card tilt reveal">
+        <div class="why-num">04 · vs. every applied agent</div>
+        <h3>Meta, not applied</h3>
+        <p>Aegis, Triage, MediVision are <em>applied</em> agents solving domain problems. ROCKET is a <em>meta</em> agent: it makes other AI faster. Judges remember meta.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- THE JOURNEY (chart) -->
+  <!-- ============================================================ -->
+  <section class="section" id="journey" data-rail-label="Journey">
+    <div class="section-eyebrow">REPLAY</div>
+    <h2 class="section-title">The optimization journey</h2>
+    <p class="section-sub">
+      Each marker is one decision the agent made on the MI300X.
+      <span class="legend"><span class="dot dot-red"></span>kept</span>
+      <span class="legend"><span class="dot dot-amber"></span>tried, reverted</span>
+    </p>
+
+    <div class="chart-frame chart-mission reveal">
+      <!-- corner brackets -->
+      <span class="cb cb-tl"></span><span class="cb cb-tr"></span>
+      <span class="cb cb-bl"></span><span class="cb cb-br"></span>
+
+      <!-- live readout strip on top -->
+      <div class="hud-strip">
+        <div class="hud-cell"><span class="hud-l">STEP</span><span class="hud-v" id="hudStep">5</span></div>
+        <div class="hud-cell"><span class="hud-l">TOK/S</span><span class="hud-v hud-red" id="hudTps">226.4</span></div>
+        <div class="hud-cell"><span class="hud-l">CUM ×</span><span class="hud-v hud-red" id="hudMult">5.67</span></div>
+        <div class="hud-cell"><span class="hud-l">TOOL</span><span class="hud-v" id="hudTool">torch_compile</span></div>
+        <div class="hud-cell hud-status"><span class="dot dot-live"></span><span id="hudState">RUN COMPLETE</span></div>
+      </div>
+
+      <svg id="journeyChart" viewBox="0 0 900 380" preserveAspectRatio="xMidYMid meet"></svg>
+
+      <!-- hover tooltip -->
+      <div class="hud-tip" id="hudTip">
+        <div class="hud-tip-row"><span class="hud-tip-label">step</span><span id="tipStep">5</span></div>
+        <div class="hud-tip-row"><span class="hud-tip-label">tool</span><span id="tipTool">torch_compile</span></div>
+        <div class="hud-tip-row"><span class="hud-tip-label">tok/s</span><span class="hud-tip-emph" id="tipTps">226.4</span></div>
+        <div class="hud-tip-row"><span class="hud-tip-label">delta</span><span id="tipDelta">+27%</span></div>
+      </div>
+
+      <button id="replayBtn" class="replay-btn">▶︎ Replay the run</button>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- AGENT TIMELINE -->
+  <!-- ============================================================ -->
+  <section class="section" id="trace" data-rail-label="Trace">
+    <div class="section-eyebrow">AGENT TRACE</div>
+    <h2 class="section-title">What the agent was thinking</h2>
+    <p class="section-sub">
+      At each step the planner reads the profile, picks one tool from the bounded toolbox,
+      applies it. The validator either keeps the change or reverts.
+    </p>
+
+    <div id="timeline" class="timeline"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TOOLBOX -->
+  <!-- ============================================================ -->
+  <section class="section" id="toolbox" data-rail-label="Toolbox">
+    <div class="section-eyebrow">TOOLBOX</div>
+    <h2 class="section-title">Five tools. The agent picks the order.</h2>
+    <p class="section-sub">
+      ROCKET doesn't write arbitrary code. The bounded search space is the point.
+      The agent has to be smart about <em>which</em> tool, <em>when</em>, with <em>what params</em>.
+    </p>
+
+    <div class="tools-grid">
+      <div class="tool-card tilt reveal">
+        <div class="tool-icon">⚡</div>
+        <code class="tool-name">dtype_cast</code>
+        <p>Cast model to bf16/fp16. Halves memory, ~2× arithmetic throughput on MI300X.</p>
+      </div>
+      <div class="tool-card tilt reveal">
+        <div class="tool-icon">⚙️</div>
+        <code class="tool-name">torch_compile</code>
+        <p>Inductor-fused kernels via <code>torch.compile</code>. Best for stable shapes.</p>
+      </div>
+      <div class="tool-card tilt reveal">
+        <div class="tool-icon">🎯</div>
+        <code class="tool-name">sdpa_attention</code>
+        <p>Memory-efficient fused attention. Big win on attention-bound workloads.</p>
+      </div>
+      <div class="tool-card tilt reveal">
+        <div class="tool-icon">📐</div>
+        <code class="tool-name">input_padding</code>
+        <p>Pad shapes to GPU-friendly multiples (128/256). Free perf when shapes are odd.</p>
+      </div>
+      <div class="tool-card tilt reveal">
+        <div class="tool-icon">💾</div>
+        <code class="tool-name">kv_cache_config</code>
+        <p>Enable KV-caching. Turns O(n²) into O(n) on autoregressive generation. Often a 2-4×.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ARCHITECTURE -->
+  <!-- ============================================================ -->
+  <section class="section" id="architecture" data-rail-label="Architecture">
+    <div class="section-eyebrow">ARCHITECTURE</div>
+    <h2 class="section-title">Three agents, one loop, all on MI300X</h2>
+
+    <div class="arch-flow reveal">
+      <div class="arch-node">
+        <div class="arch-node-title">PROFILER</div>
+        <div class="arch-node-sub">torch.profiler / rocprof</div>
+        <div class="arch-node-out">→ hotspot summary</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node arch-node-brain">
+        <div class="arch-node-title">PLANNER</div>
+        <div class="arch-node-sub">Qwen2.5-7B-Instruct (vLLM, local)</div>
+        <div class="arch-node-out">→ next tool to try</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-node-title">IMPLEMENTER</div>
+        <div class="arch-node-sub">picks from toolbox</div>
+        <div class="arch-node-out">→ transformed model</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-node-title">VALIDATOR</div>
+        <div class="arch-node-sub">re-bench + correctness</div>
+        <div class="arch-node-out">→ keep / revert</div>
+      </div>
+    </div>
+    <div class="arch-loop">↺ &nbsp;until plateau or max iterations</div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CTA -->
+  <!-- ============================================================ -->
+  <section class="cta" id="cta" data-rail-label="Ship">
+    <div class="cta-inner">
+      <h2>An autopilot for AMD performance.</h2>
+      <p>If you got this far, drop a like on this Space. It counts toward the HF community prize at the AMD x lablab.ai hackathon.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://lablab.ai/ai-hackathons/amd-developer" target="_blank" rel="noopener">View on lablab.ai</a>
+        <a class="btn btn-ghost" href="https://twitter.com/intent/tweet?text=ROCKET%20%E2%80%94%20an%20autonomous%20agent%20that%20makes%20models%20faster%20on%20AMD%20MI300X.%20%F0%9F%9A%80&hashtags=AMD,MI300X,ROCm" target="_blank" rel="noopener">Share on X</a>
+      </div>
+      <div class="cta-foot">
+        BUILT SOLO · AMD x LABLAB.AI DEVELOPER HACKATHON · MAY 2026<br/>
+        Powered by AMD Instinct MI300X · ROCm · PyTorch · Qwen
+      </div>
+      <div class="cta-sig">
+        by <span class="cta-sig-name">Maruthi Kunchala</span>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

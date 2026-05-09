@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+logs/*.jsonl
+!demo/sample_run.jsonl
+.DS_Store

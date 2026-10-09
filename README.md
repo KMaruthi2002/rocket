@@ -15,6 +15,8 @@ ROCKET is a multi-agent system that takes a PyTorch model, profiles it on AMD MI
 
 **Built for the AMD x lablab.ai Developer Hackathon (May 2026).**
 
+🎬 **[Watch the 1-minute explainer](demo/ROCKET_Explainer.mp4)**
+
 ---
 
 ## What makes ROCKET different

@@ -14,6 +14,7 @@ from rich.table import Table
 from .agents import Profiler, Validator
 from .agents.planner import OfflinePlanner, Planner, PlannerDecision
 from .bench import BenchResult, benchmark, detect_device, free, load_model
+from .replay import replay_accepted
 from .tools import TOOLBOX
 
 
@@ -211,10 +212,8 @@ class Orchestrator:
                 console.print("[yellow]reverting (reload)[/yellow]")
                 free(model)
                 model, tokenizer = load_model(self.model_id, dtype=self.dtype, device=device)
-                # Re-apply all kept history
-                for h in history:
-                    if h.get("accepted"):
-                        TOOLBOX[h["tool"]](model, tokenizer, **h.get("params", {}))
+                # Re-apply all kept history (tools may return a new model object)
+                model, tokenizer = replay_accepted(TOOLBOX, model, tokenizer, history)
 
         report.final_tok_s = prev_best
         report.cumulative_speedup = prev_best / baseline_tok_s

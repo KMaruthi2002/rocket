@@ -90,6 +90,25 @@ python -m rocket.orchestrator --model Qwen/Qwen2.5-1.5B-Instruct --iterations 5
 
 The trace is written to `logs/run.jsonl` and is what powers this Space's replay view.
 
+Options for `python -m rocket.orchestrator`:
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--model` | `Qwen/Qwen2.5-1.5B-Instruct` | Hugging Face model to optimize |
+| `--dtype` | `fp32` | Starting dtype (`fp32`, `bf16`, `fp16`) |
+| `--iterations` | `5` | Maximum planner iterations |
+| `--offline` | off | Use the rule-based planner; no vLLM server needed |
+
+The LLM planner talks to any OpenAI-compatible endpoint. Override its defaults with environment variables:
+
+| Variable | Default |
+|---|---|
+| `ROCKET_PLANNER_MODEL` | `Qwen/Qwen2.5-7B-Instruct` |
+| `ROCKET_PLANNER_BASE_URL` | `http://localhost:8000/v1` |
+| `ROCKET_PLANNER_API_KEY` | `EMPTY` |
+
+To try the dashboard locally against the bundled sample trace (`demo/sample_run.jsonl`), run `streamlit run app.py`. The tests do not need a GPU: `python -m unittest discover -s tests`.
+
 ## What's in this Space
 
 This is a **replay** of an actual ROCKET run on AMD MI300X. HF Space free-tier doesn't have MI300X, so the agent ran on the droplet, the trace is shipped here, and the Space animates the journey: live tok/s chart, agent reasoning, decision log.

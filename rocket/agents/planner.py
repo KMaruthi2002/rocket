@@ -129,14 +129,28 @@ class Planner:
 
     @staticmethod
     def _parse(text: str) -> PlannerDecision:
-        # Extract first JSON object (LLMs sometimes add prose)
-        match = re.search(r"\{[\s\S]*\}", text)
-        if not match:
-            raise ValueError(f"planner returned no JSON object:\n{text}")
-        obj = json.loads(match.group(0))
+        # Extract the first JSON object that carries a "tool" key. LLMs often
+        # add prose (possibly containing braces) before or after the object.
+        decoder = json.JSONDecoder()
+        obj = None
+        for m in re.finditer(r"\{", text):
+            try:
+                cand, _ = decoder.raw_decode(text, m.start())
+            except json.JSONDecodeError:
+                continue
+            if isinstance(cand, dict) and "tool" in cand:
+                obj = cand
+                break
+        if obj is None:
+            raise ValueError(f"planner returned no JSON object with a 'tool' key:\n{text}")
+        params = obj.get("params")
+        if params is None:
+            params = {}
+        if not isinstance(params, dict):
+            raise ValueError(f"planner 'params' must be an object, got {params!r}")
         return PlannerDecision(
             tool=obj["tool"],
-            params=obj.get("params", {}) or {},
+            params=params,
             reasoning=obj.get("reasoning", ""),
             raw=text,
         )
